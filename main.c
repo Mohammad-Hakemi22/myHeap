@@ -27,13 +27,7 @@ static header_t *get_free_block(size_t size);
 int main(void)
 {
 	int *arr = (int *)mmalloc(sizeof(int) * 10);
-	for (int i = 0; i < 10; ++i)
-	{
-		arr[i] = i;
-	}
-	printf("%d\n", arr);
-	printf("%d\n", arr[5]);
-	printf("%d\n", &arr[5]);
+	mfree(arr);
 	return 0;
 }
 
@@ -90,4 +84,42 @@ static header_t *get_free_block(size_t size)
 		current = current->s.next;
 	}
 	return NULL;
+}
+
+void mfree(void *block)
+{
+	header_t *header, *tmp;
+	void *memBreak;
+	if (!block)
+	{
+		return;
+	}
+	pthread_mutex_lock(&global_malloc_lock);
+	memBreak = sbrk(0);
+	header = (header_t *)block - 1;
+	if ((char *)block + header->s.size == memBreak)
+	{
+		if (head == tail)
+		{
+			head = tail = NULL;
+		}
+		else
+		{
+			tmp = head;
+			while (tmp)
+			{
+				if (tmp->s.next == tail)
+				{
+					tmp->s.next = NULL;
+					tail = tmp;
+				}
+				tmp = tmp->s.next;
+			}
+		}
+		sbrk(0 - sizeof(header_t) - header->s.size);
+		pthread_mutex_unlock(&global_malloc_lock);
+		return;
+	}
+	header->s.isFree = 1;
+	pthread_mutex_unlock(&global_malloc_lock);
 }
