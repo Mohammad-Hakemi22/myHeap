@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <pthread.h>
@@ -22,11 +23,17 @@ header_t *head, *tail;
 pthread_mutex_t global_malloc_lock;
 
 void *mmalloc(size_t size);
+void *mrealloc(void *block, size_t size);
+void *mcalloc(size_t num, size_t bsize);
+void mfree(void *block);
 static header_t *get_free_block(size_t size);
 
 int main(void)
 {
-	int *arr = (int *)mmalloc(sizeof(int) * 10);
+	int *a = (int *)mmalloc(sizeof(int));
+	int64_t *b = (int64_t *)mrealloc(a, sizeof(int64_t));
+	mfree(b);
+	int32_t *arr = (int32_t *)mcalloc(8, sizeof(int32_t));
 	mfree(arr);
 	return 0;
 }
@@ -143,4 +150,27 @@ void *mcalloc(size_t num, size_t bsize)
 	}
 	memset(blocks, 0, tot_size);
 	return blocks;
+}
+
+void *mrealloc(void *block, size_t size)
+{
+	header_t *header;
+	void *newBlock;
+	if (!size || !block)
+	{
+		return mmalloc(size); // null size handled in mmalloc
+	}
+	header = (header_t *)block - 1;
+	if (header->s.size >= size)
+	{
+		return block;
+	}
+	newBlock = mmalloc(size);
+	if (newBlock)
+	{
+		memcpy(newBlock, block, header->s.size);
+		mfree(block);
+		return newBlock;
+	}
+	return NULL;
 }
