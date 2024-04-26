@@ -123,3 +123,24 @@ void mfree(void *block)
 	header->s.isFree = 1;
 	pthread_mutex_unlock(&global_malloc_lock);
 }
+
+void *mcalloc(size_t num, size_t bsize)
+{
+	void *blocks;
+	if (!num || !bsize)
+	{
+		return NULL;
+	}
+	size_t tot_size = num * bsize;
+	if (bsize != tot_size / num)
+	{ // Overflow
+		return NULL;
+	}
+	blocks = mmalloc(tot_size);
+	if (!blocks)
+	{
+		return NULL;
+	}
+	memset(blocks, 0, tot_size);
+	return blocks;
+}
